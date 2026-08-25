@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), sans-serif;
+}
+
+.logo-font {
+  font-family: var(--font-cormorant), serif;
+  letter-spacing: 0.18em;
+}
+
+.diary-font {
+  font-family: var(--font-marck), cursive;
+  font-weight: 400;
+}
+.meditation-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 0;
+  height: 0;
+}
+/* Нежный скролл для дневника */
+.diary-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #c8bddf transparent;
+}
+
+.diary-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.diary-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diary-scroll::-webkit-scrollbar-thumb {
+  background: #c8bddf;
+  border-radius: 999px;
+}
+
+.diary-scroll::-webkit-scrollbar-thumb:hover {
+  background: #b5a6d2;
+}
+.page-fade {
+  animation: pageFadeIn 1s ease-out;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes recommendationHeartFill {
+  from {
+    height: 0%;
+  }
+
+  to {
+    height: 100%;
+  }
+}
+
+.recommendation-heart-fill {
+  height: 0%;
+  animation: recommendationHeartFill 4.5s linear forwards;
+}
+@keyframes recommendationResultIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.recommendation-result-modal {
+  animation: recommendationResultIn 850ms ease-out forwards;
+}
+@keyframes recommendationModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.recommendation-loading-modal {
+  animation: recommendationModalIn 350ms ease-out forwards;
+}
+
+.history-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(216, 212, 239, 0.55) transparent;
+}
+
+.history-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-scroll::-webkit-scrollbar-thumb {
+  background: rgba(216, 212, 239, 0.55);
+  border-radius: 999px;
+}
+
+.history-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 212, 239, 0.75);
+}
+
+.history-scroll::-webkit-scrollbar-button {
+  display: none;
+}

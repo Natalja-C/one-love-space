@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" fill="none">
+  <defs>
+    <linearGradient id="stem" x1="1080" y1="850" x2="620" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#667CC9" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#C8BDDF" stop-opacity=".72"/>
+    </linearGradient>
+
+    <linearGradient id="leaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#667CC9" stop-opacity=".46"/>
+      <stop offset="1" stop-color="#C8BDDF" stop-opacity=".64"/>
+    </linearGradient>
+
+    <linearGradient id="flower" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#C8BDDF" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#667CC9" stop-opacity=".42"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Main living stem: one continuous, elegant movement from bottom-right upward -->
+  <path
+    d="M1080 900
+       C1052 820 1042 748 1012 676
+       C982 604 930 546 884 478
+       C835 406 790 342 730 286
+       C675 234 612 192 540 132"
+    stroke="url(#stem)"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+
+  <!-- Upper branch -->
+  <path
+    d="M730 286 C700 245 674 204 665 157 C658 126 659 103 666 76"
+    stroke="#667CC9" stroke-opacity=".48" stroke-width="2.8" stroke-linecap="round"
+  />
+
+  <!-- Upper-left branch -->
+  <path
+    d="M675 238 C625 214 574 186 530 151 C501 128 478 108 455 82"
+    stroke="#667CC9" stroke-opacity=".42" stroke-width="2.8" stroke-linecap="round"
+  />
+
+  <!-- Middle-left branch -->
+  <path
+    d="M838 414 C789 408 738 388 699 360 C674 342 654 323 636 301"
+    stroke="#667CC9" stroke-opacity=".44" stroke-width="2.8" stroke-linecap="round"
+  />
+
+  <!-- Middle-right branch -->
+  <path
+    d="M930 548 C956 516 979 480 987 440 C991 421 993 404 993 385"
+    stroke="#667CC9" stroke-opacity=".46" stroke-width="2.8" stroke-linecap="round"
+  />
+
+  <!-- Lower-left branch -->
+  <path
+    d="M1008 668 C957 653 908 631 867 603 C837 582 815 558 795 532"
+    stroke="#667CC9" stroke-opacity=".42" stroke-width="2.8" stroke-linecap="round"
+  />
+
+  <!-- Leaves: each leaf is anchored directly to a branch -->
+  <!-- upper-left pair -->
+  <path d="M532 152 C489 147 461 121 451 84 C490 88 519 109 532 152Z"
+        fill="url(#leaf)"/>
+  <path d="M530 151 C500 132 479 111 462 89"
+        stroke="#667CC9" stroke-opacity=".28" stroke-width="1.5" stroke-linecap="round"/>
+
+  <path d="M615 205 C577 186 557 157 560 126 C592 139 611 165 615 205Z"
+        fill="url(#leaf)"/>
+  <path d="M613 201 C594 179 580 155 567 133"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- upper-right leaves -->
+  <path d="M666 158 C672 118 695 88 730 75 C728 112 706 141 666 158Z"
+        fill="url(#leaf)"/>
+  <path d="M667 155 C685 126 704 101 724 81"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <path d="M747 306 C753 268 777 240 811 227 C807 265 784 291 747 306Z"
+        fill="url(#leaf)"/>
+  <path d="M749 301 C768 274 788 251 805 233"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- middle-left leaves -->
+  <path d="M700 360 C661 354 635 334 619 301 C657 303 683 321 700 360Z"
+        fill="url(#leaf)"/>
+  <path d="M697 357 C669 341 647 323 626 306"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <path d="M807 406 C776 386 759 359 758 329 C790 343 807 367 807 406Z"
+        fill="url(#leaf)"/>
+  <path d="M805 401 C787 378 773 354 763 334"
+        stroke="#667CC9" stroke-opacity=".24" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- middle-right leaves -->
+  <path d="M987 440 C1001 406 1025 383 1055 377 C1049 411 1026 434 987 440Z"
+        fill="url(#leaf)"/>
+  <path d="M990 437 C1012 416 1032 396 1051 381"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <path d="M954 520 C924 500 912 474 916 445 C945 459 959 484 954 520Z"
+        fill="url(#leaf)"/>
+  <path d="M952 516 C938 492 926 470 919 450"
+        stroke="#667CC9" stroke-opacity=".23" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- lower-left leaves -->
+  <path d="M868 603 C830 596 806 577 792 544 C829 548 855 567 868 603Z"
+        fill="url(#leaf)"/>
+  <path d="M864 599 C839 582 818 563 798 547"
+        stroke="#667CC9" stroke-opacity=".25" stroke-width="1.4" stroke-linecap="round"/>
+
+  <path d="M954 653 C925 630 914 603 920 575 C948 590 961 616 954 653Z"
+        fill="url(#leaf)"/>
+  <path d="M951 648 C937 624 927 601 923 579"
+        stroke="#667CC9" stroke-opacity=".23" stroke-width="1.4" stroke-linecap="round"/>
+
+  <!-- Small flowers, attached to stems -->
+  <g fill="url(#flower)">
+    <!-- upper -->
+    <ellipse cx="666" cy="77" rx="8" ry="18" transform="rotate(18 666 77)"/>
+    <ellipse cx="650" cy="89" rx="8" ry="18" transform="rotate(-54 650 89)"/>
+    <ellipse cx="676" cy="95" rx="8" ry="18" transform="rotate(72 676 95)"/>
+    <circle cx="665" cy="89" r="5.5" fill="#667CC9" fill-opacity=".45"/>
+
+    <!-- right -->
+    <ellipse cx="993" cy="385" rx="7" ry="16" transform="rotate(12 993 385)"/>
+    <ellipse cx="980" cy="397" rx="7" ry="16" transform="rotate(-56 980 397)"/>
+    <ellipse cx="1006" cy="400" rx="7" ry="16" transform="rotate(70 1006 400)"/>
+    <circle cx="993" cy="397" r="5" fill="#667CC9" fill-opacity=".42"/>
+
+    <!-- lower-left -->
+    <ellipse cx="795" cy="532" rx="7" ry="16" transform="rotate(-20 795 532)"/>
+    <ellipse cx="781" cy="541" rx="7" ry="16" transform="rotate(-78 781 541)"/>
+    <ellipse cx="806" cy="548" rx="7" ry="16" transform="rotate(58 806 548)"/>
+    <circle cx="795" cy="543" r="5" fill="#667CC9" fill-opacity=".4"/>
+  </g>
+
+  <!-- A few tiny berries, also connected to branchlets -->
+  <g fill="#C8BDDF" fill-opacity=".7">
+    <circle cx="674" cy="113" r="5"/>
+    <circle cx="687" cy="125" r="3.5"/>
+    <circle cx="1001" cy="352" r="4.5"/>
+    <circle cx="1012" cy="365" r="3.5"/>
+    <circle cx="776" cy="514" r="4"/>
+  </g>
+</svg>
