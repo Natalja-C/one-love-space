@@ -1,4 +1,4 @@
-const image = (n) => `/meditation-images/Meditation-pic (${n}).jpg`;
+const image = (n) => `/meditation-images/meditation-pic (${n}).jpg`;
 const formatTime = (time) => {
   if (!time || !Number.isFinite(time)) {
     return "0:00";

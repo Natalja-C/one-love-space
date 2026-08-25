@@ -7,7 +7,11 @@ import PracticeModal from "./components/PracticeModal";
 import PracticePlayer from "./components/PracticePlayer";
 import { tags } from "./data/tags";
 import { getRecommendations } from "./lib/recommendations";
-import { getUserStorageKey } from "./components/auth";
+import { useRouter } from "next/navigation";
+import {
+  getUserStorageKey,
+  isAuthenticated,
+} from "./components/auth";
 
 const formatTime = (time: number) => {
   if (!time || !Number.isFinite(time)) {
@@ -98,17 +102,24 @@ const getDesiredTagsFromOptions = (
 };
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+  if (!isAuthenticated()) {
+    router.replace("/welcome");
+  }
+  }, [router]);
   const allPractices = categories.flatMap(
   (category) => category.practices
-);
-const [recommendedPractices, setRecommendedPractices] =
+  );
+  const [recommendedPractices, setRecommendedPractices] =
   useState<typeof allPractices>([]);
 
-const [selectedPractice, setSelectedPractice] =
+  const [selectedPractice, setSelectedPractice] =
   useState<(typeof allPractices)[number] | null>(null);
 
-const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-const [isHomeVisible, setIsHomeVisible] = useState(false);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isHomeVisible, setIsHomeVisible] = useState(false);
 
 const audioRef = useRef(null);
 const [isPlaying, setIsPlaying] = useState(false);
