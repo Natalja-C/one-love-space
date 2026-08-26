@@ -217,9 +217,13 @@ export function getNeutralRecommendations(limit = 3) {
     NEUTRAL_PRACTICES.includes(practice.title)
   );
 
-  return neutralPractices.slice(
+  const shuffledPractices = [...neutralPractices].sort(
+    () => Math.random() - 0.5
+  );
+
+  return shuffledPractices.slice(
     0,
-    Math.min(limit, neutralPractices.length)
+    Math.min(limit, shuffledPractices.length)
   );
 }
 

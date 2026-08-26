@@ -2515,10 +2515,21 @@ setRecommendationModal(recommendation);
 
           {/* ЗАГОЛОВОК */}
           <div className="pr-8">
-           <p className="max-w-[680px] text-lg font-medium leading-6 text-[#667CC9]">
-            На основе Вашей рефлексии мы подобрали несколько практик,
-            которым можно уделить внимание.
-          </p>
+            <h2 className="text-2xl font-medium text-[#626FA9]">
+              {recommendationModal.type === "personal"
+                ? "Практики, подобранные для Вас"
+                : recommendationModal.type === "suggestive"
+                  ? "Можно начать с этих практик"
+                  : "Небольшая практика для паузы"}
+            </h2>
+
+            <p className="mt-2 max-w-[620px] text-sm leading-6 text-[#7580A5]">
+              {recommendationModal.type === "personal"
+                ? "На основе Вашей записи мы подобрали практики, которые могут соответствовать тому, на что Вы обратили внимание."
+                : recommendationModal.type === "suggestive"
+                  ? "В записи пока недостаточно информации для более точного подбора. Поэтому мы предлагаем несколько практик, с которых можно начать."
+                  : "Если сейчас не хочется подробно описывать своё состояние, можно просто выбрать одну из этих нейтральных практик."}
+            </p>
           </div>
 
       {/* ПРАКТИКИ */}
