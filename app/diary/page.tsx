@@ -618,7 +618,7 @@ const selectedDateEntries = diaryEntries
     })
     .slice(0, 3);
 
-    const latestRecommendationEntry = [...diaryEntries]
+    const recommendationEntries = [...diaryEntries]
   .filter(
     (entry) =>
       entry.recommendation &&
@@ -629,10 +629,15 @@ const selectedDateEntries = diaryEntries
     const dateB = new Date(`${b.date}T${b.time}`).getTime();
 
     return dateB - dateA;
-  })[0];
+  });
 
-const latestRecommendation =
-  latestRecommendationEntry?.recommendation;
+const latestRecommendationEntry = recommendationEntries[0];
+
+const previousRecommendationEntry = recommendationEntries[1];
+
+const latestRecommendation = isRecommendationLoading
+  ? previousRecommendationEntry?.recommendation
+  : latestRecommendationEntry?.recommendation;
 
       const openEntry = (entry: DiaryEntry, editMode = false) => {
     setSelectedEntry(entry);

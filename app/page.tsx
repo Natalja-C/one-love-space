@@ -116,8 +116,14 @@ export default function Home() {
   useState<typeof allPractices>([]);
 
   const [selectedPractice, setSelectedPractice] =
-  useState<(typeof allPractices)[number] | null>(null);
-
+  useState<
+    | ((typeof allPractices)[number] & {
+        diaryEntryId?: string | null;
+        beforeTags?: string[];
+      })
+    | null
+  >(null);
+  
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isHomeVisible, setIsHomeVisible] = useState(false);
 
@@ -197,6 +203,11 @@ useEffect(() => {
     );
   }
 }, []);
+
+const [recommendationSource, setRecommendationSource] = useState<{
+  entryId: string;
+  beforeTags: string[];
+} | null>(null);
 
 const [homeReflection, setHomeReflection] = useState({
   howIAm: "",
@@ -356,6 +367,15 @@ const savedRecommendation: HomeRecommendation = {
   recommendation: savedRecommendation,
 };
 
+setRecommendationSource({
+  entryId: newEntry.id,
+  beforeTags: [
+    ...manualTags,
+    ...reflectionTags,
+    ...detectedTags,
+  ],
+});
+
   localStorage.setItem(
   getUserStorageKey(DIARY_KEY),
   JSON.stringify([...previousEntries, newEntry])
@@ -450,16 +470,20 @@ const skipHomeQuestion = (questionId: string) => {
 
 const openRecommendedPractice = (practiceId: string) => {
   const fullPractice = allPractices.find(
-  (practice) =>
-    practice.id === practiceId ||
-    practice.title === practiceId
-);
+    (practice) =>
+      practice.id === practiceId ||
+      practice.title === practiceId
+  );
 
   if (!fullPractice) {
     return;
   }
 
-  setSelectedPractice(fullPractice);
+  setSelectedPractice({
+    ...fullPractice,
+    diaryEntryId: recommendationSource?.entryId ?? null,
+    beforeTags: recommendationSource?.beforeTags ?? [],
+  });
 };
 
   return (
