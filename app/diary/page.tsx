@@ -7,7 +7,7 @@ import { getRecommendations } from "../lib/recommendations";
 import { categories } from "../data/meditations";
 import PracticeModal from "../components/PracticeModal";
 import PracticePlayer from "../components/PracticePlayer";
-import { getUserStorageKey } from "../components/auth";
+import { createClient } from "../../lib/supabase/client";
 
 type DiaryEntry = {
   id: string;
@@ -52,7 +52,6 @@ type DiaryEntry = {
   };
 };
 
-const DIARY_KEY = "oneLoveSpaceDiaryEntries";
 const getLocalDateString = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
@@ -214,7 +213,6 @@ const [bodyOptions, setBodyOptions] = useState<string[]>([]);
 const [needsOptions, setNeedsOptions] = useState<string[]>([]);
 
 const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
-const [isHydrated, setIsHydrated] = useState(false);
 const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
 const [isEditMode, setIsEditMode] = useState(false);
 const [editEntryText, setEditEntryText] = useState("");
@@ -335,33 +333,45 @@ const skipQuestion = (questionId: string) => {
 const historyRef = useRef<HTMLDivElement | null>(null);
 
 useEffect(() => {
-  const storedEntries = localStorage.getItem(
-  getUserStorageKey(DIARY_KEY)
-);
+  const loadDiaryEntries = async () => {
+    const supabase = createClient();
 
-  if (storedEntries) {
-    try {
-      setDiaryEntries(JSON.parse(storedEntries));
-    } catch {
+    const { data, error } = await supabase
+      .from("diary_entries")
+      .select("*")
+      .order("entry_date", { ascending: true })
+      .order("entry_time", { ascending: true });
+
+    if (error) {
+      console.error(
+        "Не удалось загрузить записи дневника:",
+        error
+      );
+
       setDiaryEntries([]);
+      return;
     }
-  }
 
-  setIsHydrated(true);
+    const entries: DiaryEntry[] = (data ?? []).map(
+      (row: any) => ({
+        id: row.id,
+        date: row.entry_date,
+        time: row.entry_time?.slice(0, 5) ?? "",
+        text: row.text ?? "",
+        reflection: row.reflection ?? undefined,
+        tags: row.tags ?? [],
+        recommendationData:
+          row.recommendation_data ?? undefined,
+        recommendation:
+          row.recommendation ?? undefined,
+      })
+    );
+
+    setDiaryEntries(entries);
+  };
+
+  loadDiaryEntries();
 }, []);
-
-
-  /* СОХРАНЕНИЕ ЗАПИСЕЙ */
-useEffect(() => {
-  if (!isHydrated) {
-    return;
-  }
-
-  localStorage.setItem(
-  getUserStorageKey(DIARY_KEY),
-  JSON.stringify(diaryEntries)
-);
-}, [diaryEntries, isHydrated]);
 
 /* ЗАКРЫТИЕ СПИСКА ТЕГОВ ПРИ КЛИКЕ СНАРУЖ */
 
@@ -386,7 +396,7 @@ useEffect(() => {
 }, [showTagPicker]);
 
 /* СОХРАНИТЬ НОВУЮ ЗАПИСЬ */
-const handleSaveEntry = () => {
+const handleSaveEntry = async () => {
   const now = new Date();
 
 const savedReflection = {
@@ -492,26 +502,73 @@ const storedRecommendation: NonNullable<
   practices: storedRecommendationPractices,
 };
 
-  const newEntry: DiaryEntry = {
-    id: `${now.getTime()}`,
-    date: getLocalDateString(now),
-    time: now.toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    text: entryText.trim(),
-    reflection: savedReflection,
-    tags: allEntryTags,
+  const supabase = createClient();
 
-recommendationData: {
+const {
+  data: { user },
+  error: userError,
+} = await supabase.auth.getUser();
+
+if (userError || !user) {
+  console.error(
+    "Не удалось определить пользователя:",
+    userError
+  );
+
+  return;
+}
+
+const entryDate = getLocalDateString(now);
+
+const entryTime = now.toLocaleTimeString("ru-RU", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const recommendationData = {
   manualTags,
   reflectionTags,
   detectedTags,
   desiredTags,
-},
-recommendation: storedRecommendation,
+};
 
-  };
+const { data: savedEntry, error: saveError } =
+  await supabase
+    .from("diary_entries")
+    .insert({
+      user_id: user.id,
+      entry_date: entryDate,
+      entry_time: entryTime,
+      text: entryText.trim(),
+      reflection: savedReflection,
+      tags: allEntryTags,
+      recommendation_data: recommendationData,
+      recommendation: storedRecommendation,
+    })
+    .select()
+    .single();
+
+if (saveError || !savedEntry) {
+  console.error(
+    "Не удалось сохранить запись дневника:",
+    saveError
+  );
+
+  return;
+}
+
+const newEntry: DiaryEntry = {
+  id: savedEntry.id,
+  date: savedEntry.entry_date,
+  time: savedEntry.entry_time?.slice(0, 5) ?? entryTime,
+  text: savedEntry.text ?? "",
+  reflection: savedEntry.reflection ?? savedReflection,
+  tags: savedEntry.tags ?? allEntryTags,
+  recommendationData:
+    savedEntry.recommendation_data ?? recommendationData,
+  recommendation:
+    savedEntry.recommendation ?? storedRecommendation,
+};
 
   setDiaryEntries((previousEntries) =>
     [...previousEntries, newEntry].sort(
@@ -559,9 +616,27 @@ setTimeout(() => {
 };
 
 /* УДАЛИТЬ ЗАПИСЬ */
-const handleDeleteEntry = (id: string) => {
+const handleDeleteEntry = async (id: string) => {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("diary_entries")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(
+      "Не удалось удалить запись дневника:",
+      error
+    );
+
+    return;
+  }
+
   setDiaryEntries((previousEntries) =>
-    previousEntries.filter((entry) => entry.id !== id)
+    previousEntries.filter(
+      (entry) => entry.id !== id
+    )
   );
 
   setSelectedEntry(null);
@@ -570,12 +645,71 @@ const handleDeleteEntry = (id: string) => {
 };
 
   {/* ИЗМЕНИТЬ ЗАПИСЬ */}
-const handleUpdateEntry = () => {
+const handleUpdateEntry = async () => {
   if (!selectedEntry) {
     return;
   }
 
-  const updatedText = editEntryText.trim();
+  const supabase = createClient();
+
+  const updatedText =
+    editEntryText.trim();
+
+  const updatedReflection = {
+    ...reflection,
+  };
+
+  const manualTags =
+  selectedEntry.recommendationData?.manualTags ?? [];
+
+const reflectionTags =
+  selectedEntry.recommendationData?.reflectionTags ?? [];
+
+const desiredTags =
+  selectedEntry.recommendationData?.desiredTags ?? [];
+
+const detectedTags =
+  getTagsFromReflection(
+    updatedReflection,
+    updatedText
+  );
+
+const updatedTags = Array.from(
+  new Set([
+    ...manualTags,
+    ...reflectionTags,
+    ...detectedTags,
+    ...desiredTags,
+  ])
+);
+
+const updatedRecommendationData = {
+  manualTags,
+  reflectionTags,
+  detectedTags,
+  desiredTags,
+};
+
+  const { error } = await supabase
+    .from("diary_entries")
+    .update({
+      text: updatedText,
+      reflection: updatedReflection,
+      tags: updatedTags,
+      recommendation_data: updatedRecommendationData,
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq("id", selectedEntry.id);
+
+  if (error) {
+    console.error(
+      "Не удалось изменить запись дневника:",
+      error
+    );
+
+    return;
+  }
 
   setDiaryEntries((previousEntries) =>
     previousEntries.map((entry) =>
@@ -583,15 +717,15 @@ const handleUpdateEntry = () => {
         ? {
             ...entry,
             text: updatedText,
-            reflection: { ...reflection },
-            tags: getTagsFromReflection(reflection, updatedText),
+            reflection: updatedReflection,
+            tags: updatedTags,
+            recommendationData: updatedRecommendationData,
           }
         : entry
     )
   );
 
   setSelectedEntry(null);
-
   setIsEditMode(false);
 };
 

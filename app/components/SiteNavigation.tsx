@@ -42,13 +42,18 @@ const [currentUser, setCurrentUser] = useState<{
 
 const profileRef = useRef<HTMLDivElement>(null);
 useEffect(() => {
-  const user = getCurrentUser();
+  const loadCurrentUser = async () => {
+    const user =
+      await getCurrentUser();
 
-  setCurrentUser(user);
+    setCurrentUser(user);
 
-  if (user) {
-    setEditedName(user.name);
-  }
+    if (user) {
+      setEditedName(user.name);
+    }
+  };
+
+  loadCurrentUser();
 }, []);
 
 useEffect(() => {
@@ -85,21 +90,26 @@ useEffect(() => {
   };
 }, []);
 
-function handleNameSave() {
-  const result = updateUserName(editedName);
+async function handleNameSave() {
+  const result =
+  await updateUserName(editedName);
 
   if (!result.success) {
     return;
   }
 
-  const updatedUser = getCurrentUser();
+const updatedUser =
+  await getCurrentUser();
 
-  setCurrentUser(updatedUser);
-  setEditedName(updatedUser?.name ?? "");
+setCurrentUser(updatedUser);
+
+setEditedName(
+  updatedUser?.name ?? ""
+);
   setIsEditingName(false);
 }
 
-function handlePasswordChange() {
+async function handlePasswordChange() {
   setPasswordMessage("");
 
   if (!currentPassword || !newPassword || !confirmNewPassword) {
@@ -140,7 +150,11 @@ function handlePasswordChange() {
     return;
   }
 
-  const result = updatePassword(currentPassword, newPassword);
+  const result =
+  await updatePassword(
+    currentPassword,
+    newPassword
+  );
 
   if (!result.success) {
     setPasswordMessage(
@@ -177,12 +191,20 @@ function closePasswordModal() {
   setPasswordMessage("");
 }
 
-function handleLogout() {
-  logoutUser();
+async function handleLogout() {
+  const result =
+    await logoutUser();
+
+  if (!result.success) {
+    return;
+  }
+
   setCurrentUser(null);
   setProfileOpen(false);
   setLogoutModalOpen(false);
-  window.location.href = "/welcome";
+
+  window.location.href =
+    "/welcome";
 }
 
 

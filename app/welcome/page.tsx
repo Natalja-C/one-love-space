@@ -9,10 +9,16 @@ export default function WelcomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated()) {
+  const checkAuth = async () => {
+    const authenticated = await isAuthenticated();
+
+    if (authenticated) {
       router.replace("/");
     }
-  }, [router]);
+  };
+
+  checkAuth();
+}, [router]);
 
   return <WelcomeScreen />;
 }

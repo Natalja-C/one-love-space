@@ -26,7 +26,7 @@ export default function WelcomeScreen() {
   const [confirmPasswordLimitFlash, setConfirmPasswordLimitFlash] = useState(false);
   const [authWarning, setAuthWarning] = useState("");
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
   setAuthWarning("");
 
   if (isRegister) {
@@ -52,7 +52,7 @@ export default function WelcomeScreen() {
       return;
     }
 
-    const result = registerUser(
+    const result = await registerUser(
   name.trim(),
   email.trim(),
   password
@@ -74,7 +74,10 @@ return;
 }
 
 /* ВХОД */
-const result = loginUser(email.trim(), password);
+const result = await loginUser(
+  email.trim(),
+  password
+);
 
 if (!result.success) {
   setAuthWarning(result.message ?? "Не удалось войти.");

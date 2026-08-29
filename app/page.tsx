@@ -9,9 +9,9 @@ import { tags } from "./data/tags";
 import { getRecommendations } from "./lib/recommendations";
 import { useRouter } from "next/navigation";
 import {
-  getUserStorageKey,
   isAuthenticated,
 } from "./components/auth";
+import { createClient } from "../lib/supabase/client";
 
 const formatTime = (time: number) => {
   if (!time || !Number.isFinite(time)) {
@@ -23,8 +23,6 @@ const formatTime = (time: number) => {
 
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
-
-const DIARY_KEY = "oneLoveSpaceDiaryEntries";
 
 const getLocalDateString = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -105,10 +103,18 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-  if (!isAuthenticated()) {
-    router.replace("/welcome");
-  }
-  }, [router]);
+  const checkAuth = async () => {
+    const authenticated =
+      await isAuthenticated();
+
+    if (!authenticated) {
+      router.replace("/welcome");
+    }
+  };
+
+  checkAuth();
+}, [router]);
+
   const allPractices = categories.flatMap(
   (category) => category.practices
   );
@@ -151,57 +157,46 @@ const [isRecommendationLoading, setIsRecommendationLoading] =
   useState(false);
 
 useEffect(() => {
-  const savedEntries = localStorage.getItem(
-  getUserStorageKey(DIARY_KEY)
-);
+  const loadLatestRecommendation = async () => {
+    const supabase = createClient();
 
-  if (!savedEntries) {
-    setLatestRecommendation(null);
-    setLatestRecommendationDate(null);
-    return;
-  }
+    const { data, error } = await supabase
+      .from("diary_entries")
+      .select("entry_date, entry_time, recommendation")
+      .not("recommendation", "is", null)
+      .order("entry_date", { ascending: false })
+      .order("entry_time", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  try {
-    const entries: StoredDiaryEntry[] =
-      JSON.parse(savedEntries);
+    if (error) {
+      console.error(
+        "Не удалось загрузить последнюю рекомендацию:",
+        error
+      );
+      return;
+    }
 
-    const latestEntryWithRecommendation = [...entries]
-      .filter(
-        (entry) =>
-          entry.recommendation &&
-          entry.recommendation.practices.length > 0
-      )
-      .sort((a, b) => {
-        const dateA = new Date(
-          `${a.date}T${a.time}`
-        ).getTime();
-
-        const dateB = new Date(
-          `${b.date}T${b.time}`
-        ).getTime();
-
-        return dateB - dateA;
-      })[0];
-
-    if (!latestEntryWithRecommendation?.recommendation) {
+    if (
+      !data?.recommendation ||
+      !Array.isArray(data.recommendation.practices) ||
+      data.recommendation.practices.length === 0
+    ) {
       setLatestRecommendation(null);
       setLatestRecommendationDate(null);
       return;
     }
 
     setLatestRecommendation(
-      latestEntryWithRecommendation.recommendation
+      data.recommendation as HomeRecommendation
     );
 
     setLatestRecommendationDate(
-      latestEntryWithRecommendation.date
+      data.entry_date
     );
-  } catch (error) {
-    console.error(
-      "Не удалось загрузить рекомендации:",
-      error
-    );
-  }
+  };
+
+  loadLatestRecommendation();
 }, []);
 
 const [recommendationSource, setRecommendationSource] = useState<{
@@ -248,164 +243,194 @@ useEffect(() => {
   setIsHomeVisible(true);
 }, []);
 
-const handleHomeDiarySave = () => {
+const handleHomeDiarySave = async () => {
   const now = new Date();
 
-  let previousEntries = [];
+  const savedReflection = {
+    ...homeReflection,
 
-  const storedEntries = localStorage.getItem(
-  getUserStorageKey(DIARY_KEY)
-);
+    body: [
+      homeReflection.body.trim(),
+      homeBodyOptions.join(", "),
+    ]
+      .filter(Boolean)
+      .join(" · "),
 
-  if (storedEntries) {
-    try {
-      previousEntries = JSON.parse(storedEntries);
-    } catch {
-      previousEntries = [];
-    }
-  }
+    needs: [
+      homeReflection.needs.trim(),
+      homeNeedsOptions.join(", "),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
 
-const savedReflection = {
-  ...homeReflection,
+  const manualTags = [...homeSelectedTags];
 
-  body: [
-    homeReflection.body.trim(),
-    homeBodyOptions.join(", "),
-  ]
-    .filter(Boolean)
-    .join(" · "),
+  const reflectionTags =
+    getReflectionTagsFromOptions(homeBodyOptions);
 
-  needs: [
-    homeReflection.needs.trim(),
-    homeNeedsOptions.join(", "),
-  ]
-    .filter(Boolean)
-    .join(" · "),
-};
+  const desiredTags =
+    getDesiredTagsFromOptions(homeNeedsOptions);
 
-const manualTags = [...homeSelectedTags];
+  const detectedTags = getTagsFromText(
+    [
+      homeDiaryText,
+      homeReflection.howIAm,
+      homeReflection.whatAffectedMe,
+      homeReflection.body,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
 
-const reflectionTags =
-  getReflectionTagsFromOptions(homeBodyOptions);
+  const allEntryTags = Array.from(
+    new Set([
+      ...manualTags,
+      ...reflectionTags,
+      ...detectedTags,
+      ...desiredTags,
+    ])
+  );
 
-const desiredTags =
-  getDesiredTagsFromOptions(homeNeedsOptions);
-
-/*
-  Здесь анализируем только свободный текст.
-  Не подмешиваем выбранные кнопками body/needs повторно,
-  чтобы один сигнал не получил двойной вес.
-*/
-const detectedTags = getTagsFromText(
-  [
-    homeDiaryText,
-    homeReflection.howIAm,
-    homeReflection.whatAffectedMe,
-    homeReflection.body,
-  ]
-    .filter(Boolean)
-    .join(" ")
-);
-
-const allEntryTags = Array.from(
-  new Set([
-    ...manualTags,
-    ...reflectionTags,
-    ...detectedTags,
-    ...desiredTags,
-  ])
-);
-
-const recommendationResult = getRecommendations({
-  manualTags,
-  reflectionTags,
-  detectedTags,
-  desiredTags,
-});
-
-const savedRecommendation: HomeRecommendation = {
-  type: recommendationResult.type as HomeRecommendation["type"],
-  createdAt: now.toISOString(),
-
-  practices: recommendationResult.recommendations.map(
-    (item: any) => {
-      const practice = item.practice ?? item;
-
-      return {
-        practiceId: practice.id,
-        title: practice.title,
-        duration: practice.duration,
-        image: practice.image,
-      };
-    }
-  ),
-};
-
-  const newEntry = {
-  id: `${now.getTime()}`,
-
-  date: getLocalDateString(now),
-
-  time: now.toLocaleTimeString("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }),
-
-  text: homeDiaryText.trim(),
-
-  reflection: savedReflection,
-
-  tags: allEntryTags,
-
-  recommendationData: {
+  const recommendationResult = getRecommendations({
     manualTags,
     reflectionTags,
     detectedTags,
     desiredTags,
-  },
+  });
 
-  recommendation: savedRecommendation,
-};
+  const savedRecommendation: HomeRecommendation = {
+    type:
+      recommendationResult.type as HomeRecommendation["type"],
 
-setRecommendationSource({
-  entryId: newEntry.id,
-  beforeTags: [
-    ...manualTags,
-    ...reflectionTags,
-    ...detectedTags,
-  ],
-});
+    createdAt: now.toISOString(),
 
-  localStorage.setItem(
-  getUserStorageKey(DIARY_KEY),
-  JSON.stringify([...previousEntries, newEntry])
-);
+    practices: recommendationResult.recommendations.map(
+      (item: any) => {
+        const practice = item.practice ?? item;
+
+        return {
+          practiceId: practice.id,
+          title: practice.title,
+          duration: practice.duration,
+          image: practice.image,
+        };
+      }
+    ),
+  };
+
+  const supabase = createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error(
+      "Не удалось определить пользователя:",
+      userError
+    );
+
+    return;
+  }
+
+  const entryDate = getLocalDateString(now);
+
+  const entryTime = now.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const recommendationData = {
+    manualTags,
+    reflectionTags,
+    detectedTags,
+    desiredTags,
+  };
+
+  const { data: savedEntry, error: saveError } =
+    await supabase
+      .from("diary_entries")
+      .insert({
+        user_id: user.id,
+        entry_date: entryDate,
+        entry_time: entryTime,
+        text: homeDiaryText.trim(),
+        reflection: savedReflection,
+        tags: allEntryTags,
+        recommendation_data: recommendationData,
+        recommendation: savedRecommendation,
+      })
+      .select()
+      .single();
+
+  if (saveError || !savedEntry) {
+    console.error(
+      "Не удалось сохранить запись с главной:",
+      saveError
+    );
+
+    return;
+  }
+
+  const newEntry = {
+    id: savedEntry.id,
+    date: savedEntry.entry_date,
+    time:
+      savedEntry.entry_time?.slice(0, 5) ??
+      entryTime,
+    text: savedEntry.text ?? "",
+    reflection:
+      savedEntry.reflection ?? savedReflection,
+    tags:
+      savedEntry.tags ?? allEntryTags,
+    recommendationData:
+      savedEntry.recommendation_data ??
+      recommendationData,
+    recommendation:
+      savedEntry.recommendation ??
+      savedRecommendation,
+  };
+
+  setRecommendationSource({
+    entryId: newEntry.id,
+
+    beforeTags: [
+      ...manualTags,
+      ...reflectionTags,
+      ...detectedTags,
+    ],
+  });
 
   setHomeDiaryText("");
   setHomeSelectedTags([]);
   setHomeTagPickerOpen(false);
+
   setIsRecommendationLoading(true);
-setTimeout(() => {
-  setLatestRecommendation(savedRecommendation);
-  setLatestRecommendationDate(newEntry.date);
 
-  setIsRecommendationLoading(false);
-  setHomeRecommendationModal(savedRecommendation);
-}, 4000);
+  setTimeout(() => {
+    setLatestRecommendation(savedRecommendation);
+    setLatestRecommendationDate(newEntry.date);
+
+    setIsRecommendationLoading(false);
+    setHomeRecommendationModal(savedRecommendation);
+  }, 4000);
+
   setHomeReflection({
-  howIAm: "",
-  whatAffectedMe: "",
-  body: "",
-  attention: "",
-  needs: "",
-  wish: "",
-});
+    howIAm: "",
+    whatAffectedMe: "",
+    body: "",
+    attention: "",
+    needs: "",
+    wish: "",
+  });
 
-setHomeBodyOptions([]);
-setHomeNeedsOptions([]);
-setHomeAnsweredQuestions([]);
-setHomeOpenQuestion(null);
-setHomeQuestionsOpen(false);
+  setHomeBodyOptions([]);
+  setHomeNeedsOptions([]);
+  setHomeAnsweredQuestions([]);
+  setHomeOpenQuestion(null);
+  setHomeQuestionsOpen(false);
 };
 
 

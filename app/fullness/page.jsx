@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { tags } from "../data/tags";
 import { categories } from "../data/meditations";
 import PracticePlayer from "../components/PracticePlayer";
-import { getUserStorageKey } from "../components/auth";
+import { createClient } from "../../lib/supabase/client";
 
 export default function Fullness() {
 
@@ -69,37 +69,80 @@ const [expandedHistoryId, setExpandedHistoryId] =
   useState(null);
 
 useEffect(() => {
-  const storedHistory = localStorage.getItem(
-  getUserStorageKey("oneLoveSpacePracticeHistory")
-);
+  const loadFullnessData = async () => {
+    const supabase = createClient();
 
-  if (storedHistory) {
-    try {
-      const parsedHistory = JSON.parse(storedHistory);
+    const [
+      { data: historyData, error: historyError },
+      { data: diaryData, error: diaryError },
+    ] = await Promise.all([
+      supabase
+        .from("practice_history")
+        .select("*")
+        .order("completed_at", { ascending: true }),
 
-      if (Array.isArray(parsedHistory)) {
-        setPracticeHistory(parsedHistory);
-      }
-    } catch {
+      supabase
+        .from("diary_entries")
+        .select("*")
+        .order("entry_date", { ascending: true })
+        .order("entry_time", { ascending: true }),
+    ]);
+
+    if (historyError) {
+      console.error(
+        "Не удалось загрузить историю практик:",
+        historyError
+      );
+
       setPracticeHistory([]);
+    } else {
+      const history = (historyData ?? []).map(
+        (row) => ({
+          id: row.id,
+          practiceId: row.practice_id,
+          title: row.title,
+          image: row.image,
+          plannedDuration: row.planned_duration,
+          listenedSeconds: row.listened_seconds ?? 0,
+          completedAt: row.completed_at,
+          stateChange: row.state_change ?? "",
+          reflection: row.reflection ?? "",
+          diaryEntryId: row.diary_entry_id ?? null,
+          beforeTags: row.before_tags ?? [],
+        })
+      );
+
+      setPracticeHistory(history);
     }
-  }
 
-  const storedDiaryEntries = localStorage.getItem(
-  getUserStorageKey("oneLoveSpaceDiaryEntries")
-);
+    if (diaryError) {
+      console.error(
+        "Не удалось загрузить записи дневника для My Fullness:",
+        diaryError
+      );
 
-  if (storedDiaryEntries) {
-    try {
-      const parsedDiaryEntries = JSON.parse(storedDiaryEntries);
-
-      if (Array.isArray(parsedDiaryEntries)) {
-        setDiaryEntries(parsedDiaryEntries);
-      }
-    } catch {
       setDiaryEntries([]);
+    } else {
+      const entries = (diaryData ?? []).map(
+        (row) => ({
+          id: row.id,
+          date: row.entry_date,
+          time: row.entry_time?.slice(0, 5) ?? "",
+          text: row.text ?? "",
+          reflection: row.reflection ?? undefined,
+          tags: row.tags ?? [],
+          recommendationData:
+            row.recommendation_data ?? undefined,
+          recommendation:
+            row.recommendation ?? undefined,
+        })
+      );
+
+      setDiaryEntries(entries);
     }
-  }
+  };
+
+  loadFullnessData();
 }, []);
 
 const now = new Date();

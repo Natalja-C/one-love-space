@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { getUserStorageKey } from "./auth";
+import { createClient } from "../../lib/supabase/client";
 
 type PracticePlayerProps = {
   practice: any;
@@ -138,7 +138,7 @@ const getListenedSeconds = () => {
   return Math.round(total);
 };
 
-const savePracticeToMyFullness = ({
+const savePracticeToMyFullness = async ({
   reflectionText = "",
   change = "",
 }: {
@@ -147,44 +147,46 @@ const savePracticeToMyFullness = ({
 }) => {
   const listenedSeconds = getListenedSeconds();
 
-  const historyKey = getUserStorageKey(
-  "oneLoveSpacePracticeHistory"
-);
+  const supabase = createClient();
 
-  let previousHistory = [];
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  const storedHistory =
-    localStorage.getItem(historyKey);
+  if (userError || !user) {
+    console.error(
+      "Не удалось определить пользователя:",
+      userError
+    );
 
-  if (storedHistory) {
-    try {
-      previousHistory = JSON.parse(storedHistory);
-    } catch {
-      previousHistory = [];
-    }
+    return;
   }
 
-  const practiceEntry = {
-    id: `${Date.now()}`,
-    practiceId: practice.id,
-    title: practice.title,
-    image: practice.image,
-    plannedDuration: practice.duration,
-    listenedSeconds,
-    completedAt: new Date().toISOString(),
-    stateChange: change,
-    reflection: reflectionText.trim(),
-    diaryEntryId: practice.diaryEntryId ?? null,
-    beforeTags: practice.beforeTags ?? [],
-  };
+  const { error } = await supabase
+    .from("practice_history")
+    .insert({
+      user_id: user.id,
+      practice_id: practice.id,
+      title: practice.title,
+      image: practice.image,
+      planned_duration: practice.duration,
+      listened_seconds: listenedSeconds,
+      completed_at: new Date().toISOString(),
+      state_change: change,
+      reflection: reflectionText.trim(),
+      diary_entry_id: practice.diaryEntryId ?? null,
+      before_tags: practice.beforeTags ?? [],
+    });
 
-  localStorage.setItem(
-    historyKey,
-    JSON.stringify([
-      ...previousHistory,
-      practiceEntry,
-    ])
-  );
+  if (error) {
+    console.error(
+      "Не удалось сохранить практику в My Fullness:",
+      error
+    );
+
+    return;
+  }
 };
 
 

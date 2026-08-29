@@ -1,53 +1,9 @@
+import { createClient } from "../../lib/supabase/client";
+
 type User = {
   name: string;
   email: string;
-  password: string;
 };
-
-const USER_KEY = "oneLoveSpaceUsers";
-const AUTH_KEY = "oneLoveSpaceAuth";
-const CURRENT_USER_KEY = "oneLoveSpaceCurrentUser";
-
-const LEGACY_OWNER_EMAIL = "nataljacapkevic@gmail.com";
-
-function migrateLegacyDataForUser(email: string) {
-  if (email !== LEGACY_OWNER_EMAIL) {
-    return;
-  }
-
-  const legacyKeys = [
-    "oneLoveSpaceDiaryEntries",
-    "oneLoveSpacePracticeHistory",
-  ];
-
-  legacyKeys.forEach((baseKey) => {
-    const personalKey = `${baseKey}:${email}`;
-
-    const personalData = localStorage.getItem(personalKey);
-    const legacyData = localStorage.getItem(baseKey);
-
-    if (!legacyData) {
-      return;
-    }
-
-    let personalIsEmpty = !personalData;
-
-    if (personalData) {
-      try {
-        const parsed = JSON.parse(personalData);
-
-        personalIsEmpty =
-          Array.isArray(parsed) && parsed.length === 0;
-      } catch {
-        personalIsEmpty = false;
-      }
-    }
-
-    if (personalIsEmpty) {
-      localStorage.setItem(personalKey, legacyData);
-    }
-  });
-}
 
 const PASSWORD_MIN_LENGTH = 6;
 const PASSWORD_MAX_LENGTH = 32;
@@ -63,22 +19,34 @@ const emailPattern =
 /* РЕГИСТРАЦИЯ */
 /* ================================================== */
 
-export function registerUser(
+export async function registerUser(
   name: string,
   email: string,
   password: string
 ) {
-  const normalizedEmail = email.trim().toLowerCase();
+  const supabase = createClient();
 
-  /* Проверка email */
-  if (!emailPattern.test(normalizedEmail)) {
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+  const normalizedName =
+    name.trim();
+
+  if (!normalizedName) {
     return {
       success: false,
-      message: "Введите корректный адрес электронной почты.",
+      message: "Пожалуйста, введите ваше имя.",
     };
   }
 
-  /* Проверка длины пароля */
+  if (!emailPattern.test(normalizedEmail)) {
+    return {
+      success: false,
+      message:
+        "Введите корректный адрес электронной почты.",
+    };
+  }
+
   if (password.length < PASSWORD_MIN_LENGTH) {
     return {
       success: false,
@@ -87,7 +55,6 @@ export function registerUser(
     };
   }
 
-  /* Проверка допустимых символов */
   if (!passwordPattern.test(password)) {
     return {
       success: false,
@@ -96,45 +63,55 @@ export function registerUser(
     };
   }
 
-  /* Максимальная длина */
   if (password.length > PASSWORD_MAX_LENGTH) {
     return {
       success: false,
-      message: "Пароль не может содержать более 32 символов.",
+      message:
+        "Пароль не может содержать более 32 символов.",
     };
   }
 
-  /* Получаем существующих пользователей */
-  const storedUsers = localStorage.getItem(USER_KEY);
+  const { data, error } =
+    await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
 
-  const users: User[] = storedUsers
-    ? JSON.parse(storedUsers)
-    : [];
+      options: {
+        data: {
+          name: normalizedName,
+        },
+      },
+    });
 
-  /* Проверяем именно этот email */
-  const existingUser = users.find(
-    (user) => user.email.toLowerCase() === normalizedEmail
-  );
+  if (error) {
+    const message =
+      error.message.toLowerCase();
 
-  if (existingUser) {
+    if (
+      message.includes("already") ||
+      message.includes("registered")
+    ) {
+      return {
+        success: false,
+        message:
+          "Пользователь с такой почтой уже существует.",
+      };
+    }
+
     return {
       success: false,
-      message: "Пользователь с такой почтой уже существует.",
+      message:
+        "Не удалось создать аккаунт. Попробуйте ещё раз.",
     };
   }
 
-  /* Создаём пользователя */
-  const user: User = {
-    name: name.trim(),
-    email: normalizedEmail,
-    password,
-  };
-
-  users.push(user);
-
-  localStorage.setItem(USER_KEY, JSON.stringify(users));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  localStorage.setItem(AUTH_KEY, "true");
+  if (!data.user) {
+    return {
+      success: false,
+      message:
+        "Не удалось создать аккаунт.",
+    };
+  }
 
   return {
     success: true,
@@ -146,55 +123,53 @@ export function registerUser(
 /* ВХОД */
 /* ================================================== */
 
-export function loginUser(email: string, password: string) {
-  const normalizedEmail = email.trim().toLowerCase();
+export async function loginUser(
+  email: string,
+  password: string
+) {
+  const supabase = createClient();
 
-  /* Проверка email */
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
   if (!emailPattern.test(normalizedEmail)) {
     return {
       success: false,
-      message: "Введите корректный адрес электронной почты.",
+      message:
+        "Введите корректный адрес электронной почты.",
     };
   }
 
-  const storedUsers = localStorage.getItem(USER_KEY);
+  const { data, error } =
+    await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
 
-  if (!storedUsers) {
+  if (error || !data.user) {
     return {
       success: false,
-      message: "Пользователь с такой почтой не найден.",
+      message:
+        "Неверная электронная почта или пароль.",
     };
   }
 
-  const users: User[] = JSON.parse(storedUsers);
+  const { data: profile } =
+    await supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", data.user.id)
+      .single();
 
-  const user = users.find(
-    (user) => user.email.toLowerCase() === normalizedEmail
-  );
+  const name =
+    profile?.name ||
+    data.user.user_metadata?.name ||
+    "Пользователь";
 
-  if (!user) {
-    return {
-      success: false,
-      message: "Пользователь с такой почтой не найден.",
-    };
-  }
 
-  if (user.password !== password) {
-    return {
-      success: false,
-      message: "Неверная электронная почта или пароль.",
-    };
-  }
-
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-
-    localStorage.setItem(AUTH_KEY, "true");
-
-    migrateLegacyDataForUser(normalizedEmail);
-
-    return {
-      success: true,
-    };
+  return {
+    success: true,
+  };
 }
 
 
@@ -202,58 +177,81 @@ export function loginUser(email: string, password: string) {
 /* ВЫХОД */
 /* ================================================== */
 
-export function logoutUser() {
-  localStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(CURRENT_USER_KEY);
+export async function logoutUser() {
+  const supabase = createClient();
+
+  const { error } =
+    await supabase.auth.signOut();
+
+  if (error) {
+    return {
+      success: false,
+      message:
+        "Не удалось выйти из аккаунта.",
+    };
+  }
+
+  return {
+    success: true,
+  };
 }
+
 
 /* ================================================== */
 /* ИЗМЕНЕНИЕ ИМЕНИ */
 /* ================================================== */
 
-export function updateUserName(name: string) {
-  const currentUser = getCurrentUser();
-
-  if (!currentUser) {
-    return {
-      success: false,
-      message: "Пользователь не найден.",
-    };
-  }
+export async function updateUserName(
+  name: string
+) {
+  const supabase = createClient();
 
   const newName = name.trim();
 
   if (!newName) {
     return {
       success: false,
-      message: "Имя не может быть пустым.",
+      message:
+        "Имя не может быть пустым.",
     };
   }
 
-  const storedUsers = localStorage.getItem(USER_KEY);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (!storedUsers) {
+  if (userError || !user) {
     return {
       success: false,
-      message: "Пользователь не найден.",
+      message:
+        "Пользователь не найден.",
     };
   }
 
-  const users: User[] = JSON.parse(storedUsers);
+  const { error } =
+    await supabase
+      .from("profiles")
+      .update({
+        name: newName,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-  const updatedUsers = users.map((user) =>
-    user.email.toLowerCase() === currentUser.email.toLowerCase()
-      ? { ...user, name: newName }
-      : user
-  );
+  if (error) {
+    return {
+      success: false,
+      message:
+        "Не удалось изменить имя.",
+    };
+  }
 
-  const updatedUser = {
-    ...currentUser,
-    name: newName,
-  };
-
-  localStorage.setItem(USER_KEY, JSON.stringify(updatedUsers));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  await supabase.auth.updateUser({
+    data: {
+      name: newName,
+    },
+  });
 
   return {
     success: true,
@@ -265,31 +263,20 @@ export function updateUserName(name: string) {
 /* ИЗМЕНЕНИЕ ПАРОЛЯ */
 /* ================================================== */
 
-export function updatePassword(
+export async function updatePassword(
   currentPassword: string,
   newPassword: string
 ) {
-  const currentUser = getCurrentUser();
+  const supabase = createClient();
 
-  if (!currentUser) {
-    return {
-      success: false,
-      message: "Пользователь не найден.",
-    };
-  }
-
-  if (currentUser.password !== currentPassword) {
-    return {
-      success: false,
-      message: "Неверный текущий пароль.",
-    };
-  }
-
-  if (newPassword.length < PASSWORD_MIN_LENGTH) {
+  if (
+    newPassword.length <
+    PASSWORD_MIN_LENGTH
+  ) {
     return {
       success: false,
       message:
-        "Пароль должен состоять из латинских букв, цифр или специальных символов и содержать не менее 6 символов.",
+        "Новый пароль должен содержать не менее 6 символов.",
     };
   }
 
@@ -297,53 +284,78 @@ export function updatePassword(
     return {
       success: false,
       message:
-        "Пароль должен состоять из латинских букв, цифр или специальных символов и содержать не менее 6 символов.",
+        "Пароль содержит недопустимые символы.",
     };
   }
 
-  if (newPassword.length > PASSWORD_MAX_LENGTH) {
+  if (
+    newPassword.length >
+    PASSWORD_MAX_LENGTH
+  ) {
     return {
       success: false,
-      message: "Пароль не может содержать более 32 символов.",
+      message:
+        "Пароль не может содержать более 32 символов.",
     };
   }
 
-  const storedUsers = localStorage.getItem(USER_KEY);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!storedUsers) {
+  if (!user?.email) {
     return {
       success: false,
-      message: "Пользователь не найден.",
+      message:
+        "Пользователь не найден.",
     };
   }
 
-  const users: User[] = JSON.parse(storedUsers);
+  const { error: passwordCheckError } =
+    await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
 
-  const updatedUsers = users.map((user) =>
-    user.email.toLowerCase() === currentUser.email.toLowerCase()
-      ? { ...user, password: newPassword }
-      : user
-  );
+  if (passwordCheckError) {
+    return {
+      success: false,
+      message:
+        "Неверный текущий пароль.",
+    };
+  }
 
-  const updatedUser = {
-    ...currentUser,
-    password: newPassword,
-  };
+  const { error } =
+    await supabase.auth.updateUser({
+      password: newPassword,
+    });
 
-  localStorage.setItem(USER_KEY, JSON.stringify(updatedUsers));
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+  if (error) {
+    return {
+      success: false,
+      message:
+        "Не удалось изменить пароль.",
+    };
+  }
 
   return {
     success: true,
   };
 }
 
+
 /* ================================================== */
 /* ПРОВЕРКА АВТОРИЗАЦИИ */
 /* ================================================== */
 
-export function isAuthenticated() {
-  return localStorage.getItem(AUTH_KEY) === "true";
+export async function isAuthenticated() {
+  const supabase = createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return Boolean(session);
 }
 
 
@@ -351,22 +363,35 @@ export function isAuthenticated() {
 /* ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ */
 /* ================================================== */
 
-export function getCurrentUser(): User | null {
-  const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+export async function getCurrentUser():
+  Promise<User | null> {
+  const supabase = createClient();
 
-  if (!storedUser) {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
     return null;
   }
 
-  return JSON.parse(storedUser);
-}
+  const { data: profile } =
+    await supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", user.id)
+      .single();
 
-export function getUserStorageKey(baseKey: string) {
-  const user = getCurrentUser();
+  const currentUser = {
+    name:
+      profile?.name ||
+      user.user_metadata?.name ||
+      "Пользователь",
 
-  if (!user) {
-    return `${baseKey}:guest`;
-  }
+    email:
+      user.email ?? "",
+  };
 
-  return `${baseKey}:${user.email.trim().toLowerCase()}`;
+  return currentUser;
 }
