@@ -172,6 +172,49 @@ export async function loginUser(
   };
 }
 
+/* ================================================== */
+/* ВОССТАНОВЛЕНИЕ ПАРОЛЯ */
+/* ================================================== */
+
+export async function resetPassword(
+  email: string
+) {
+  const supabase = createClient();
+
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+  if (!emailPattern.test(normalizedEmail)) {
+    return {
+      success: false,
+      message:
+        "Введите корректный адрес электронной почты.",
+    };
+  }
+
+  const { error } =
+    await supabase.auth.resetPasswordForEmail(
+      normalizedEmail,
+      {
+        redirectTo:
+          `${window.location.origin}/reset-password`,
+      }
+    );
+
+  if (error) {
+    return {
+      success: false,
+      message:
+        "Не удалось отправить письмо. Попробуйте ещё раз.",
+    };
+  }
+
+  return {
+    success: true,
+    message:
+      "Ссылка для восстановления пароля отправлена на вашу почту.",
+  };
+}
 
 /* ================================================== */
 /* ВЫХОД */
@@ -184,12 +227,12 @@ export async function logoutUser() {
     await supabase.auth.signOut();
 
   if (error) {
-    return {
-      success: false,
-      message:
-        "Не удалось выйти из аккаунта.",
-    };
-  }
+  return {
+    success: false,
+    message:
+      "Не удалось отправить письмо. Попробуйте ещё раз.",
+  };
+}
 
   return {
     success: true,

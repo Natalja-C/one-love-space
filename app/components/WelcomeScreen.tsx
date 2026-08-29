@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerUser, loginUser } from "./auth";
+import {
+  registerUser,
+  loginUser,
+  resetPassword,
+} from "./auth";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -90,6 +94,25 @@ setIsLeaving(true);
 setTimeout(() => {
   window.location.href = "/";
 }, 900);
+};
+
+const handleForgotPassword = async () => {
+  setAuthWarning("");
+
+  if (!email.trim()) {
+    setAuthWarning(
+      "Введите электронную почту, указанную при регистрации."
+    );
+    return;
+  }
+
+  const result =
+    await resetPassword(email);
+
+  setAuthWarning(
+    result.message ??
+      "Не удалось отправить письмо."
+  );
 };
 
   useEffect(() => {
@@ -527,6 +550,7 @@ setTimeout(() => {
 
       <button
         type="button"
+        onClick={handleForgotPassword}
         className="text-[#6573C1] transition hover:text-[#46559F]"
       >
         Забыли пароль?
